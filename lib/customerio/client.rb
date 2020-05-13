@@ -2,7 +2,8 @@ require 'net/http'
 require 'multi_json'
 
 module Customerio
-  DEFAULT_BASE_URI = 'https://track.customer.io'
+  TRACK_ROOT = 'https://track.customer.io/api/v1'
+  API_ROOT = 'https://api.customer.io/v1/api'
   DEFAULT_TIMEOUT  = 10
 
   class Client
@@ -22,7 +23,6 @@ module Customerio
       @username = site_id
       @password = secret_key
       @json = options.has_key?(:json) ? options[:json] : true
-      @base_uri = options[:base_uri] || DEFAULT_BASE_URI
       @timeout = options[:timeout] || DEFAULT_TIMEOUT
     end
 
@@ -84,7 +84,7 @@ module Customerio
     def delete_device(customer_id, device_id)
       raise ParamError.new("customer_id must be a non-empty string") unless customer_id != "" and !customer_id.nil?
       raise ParamError.new("device_id must be a non-empty string") unless device_id != "" and !device_id.nil?
-      
+
       verify_response(request(:delete, device_id_path(customer_id, device_id)))
     end
 
@@ -104,28 +104,44 @@ module Customerio
       raise ParamError.new("customer_ids must be a list of values") unless customer_ids.is_a? Array
 
       customer_ids = customer_ids.map{ |id| id.to_s }
-      
+
       verify_response(request(:post, remove_from_segment_path(segment_id), {
         :ids => customer_ids,
       }))
     end
 
+    def trigger_broadcast(campaign_id, data={}, recipients={})
+      raise ParamError.new("campaign_id must be an integer") unless campaign_id.is_a? Integer
+
+      if data.nil?
+        data = {}
+      end
+
+      raise ParamError.new("data parameter must be a hash") unless data.is_a?(Hash)
+
+      verify_response(request(:post, trigger_path(campaign_id), data))
+    end
+
     private
 
     def add_to_segment_path(segment_id)
-      "/api/v1/segments/#{segment_id}/add_customers"
+      "#{TRACK_ROOT}/segments/#{segment_id}/add_customers"
     end
 
     def remove_from_segment_path(segment_id)
-      "/api/v1/segments/#{segment_id}/remove_customers"
+      "#{TRACK_ROOT}/segments/#{segment_id}/remove_customers"
     end
 
     def device_path(customer_id)
-      "/api/v1/customers/#{customer_id}/devices"
+      "#{TRACK_ROOT}/customers/#{customer_id}/devices"
     end
 
     def device_id_path(customer_id, device_id)
-      "/api/v1/customers/#{customer_id}/devices/#{device_id}"
+      "#{TRACK_ROOT}/customers/#{customer_id}/devices/#{device_id}"
+    end
+
+    def trigger_path(campaign_id)
+      "#{API_ROOT}/campaigns/#{campaign_id}/triggers"
     end
 
     def create_or_update(attributes = {})
@@ -143,7 +159,7 @@ module Customerio
     end
 
     def create_anonymous_event(event_name, attributes = {})
-      create_event("/api/v1/events", event_name, attributes)
+      create_event("#{TRACK_ROOT}/events", event_name, attributes)
     end
 
     def create_event(url, event_name, attributes = {})
@@ -153,15 +169,15 @@ module Customerio
     end
 
     def customer_path(id)
-      "/api/v1/customers/#{id}"
+      "#{TRACK_ROOT}/customers/#{id}"
     end
 
     def suppress_path(customer_id)
-      "/api/v1/customers/#{customer_id}/suppress"
+      "#{TRACK_ROOT}/customers/#{customer_id}/suppress"
     end
 
     def unsuppress_path(customer_id)
-      "/api/v1/customers/#{customer_id}/unsuppress"
+      "#{TRACK_ROOT}/customers/#{customer_id}/unsuppress"
     end
 
     def valid_timestamp?(timestamp)
@@ -183,7 +199,7 @@ module Customerio
     end
 
     def request(method, path, body = nil, headers = {})
-      uri = URI.join(@base_uri, path)
+      uri = URI(path)
 
       session = Net::HTTP.new(uri.host, uri.port)
       session.use_ssl = (uri.scheme == 'https')

@@ -1,5 +1,6 @@
 require 'spec_helper'
 require 'multi_json'
+require 'pry'
 
 
 describe Customerio::Client do
@@ -7,7 +8,7 @@ describe Customerio::Client do
   let(:response) { double("Response", :code => 200) }
 
   def api_uri(path)
-    "https://SITE_ID:API_KEY@track.customer.io#{path}"
+    "https://track.customer.io#{path}"
   end
 
   def json(data)
@@ -43,7 +44,7 @@ describe Customerio::Client do
     it "sends a PUT request to customer.io's customer API" do
       stub_request(:put, api_uri('/api/v1/customers/5')).
          with(:body => "id=5").
-         to_return(:status => 200, :body => "", :headers => {})
+         to_return(:status => 200, :body => "hello", :headers => {})
 
       client.identify(:id => 5)
     end
@@ -480,6 +481,15 @@ describe Customerio::Client do
       stub_request(:post, api_uri('/api/v1/segments/1/remove_customers')).with(:body=>json({:ids=>["1", "2", "3"]})).to_return(:status => 200, :body => "", :headers => {})
 
       client.remove_from_segment(1, [1, 2, 3])
+    end
+  end
+
+  describe "#trigger_broadcast" do
+    client = Customerio::Client.new("SITE_ID", "API_KEY", :json=>true)
+
+    it "sends a POST request to the customer.io's trigger API" do
+
+      client.trigger_broadcast(1, { :name => "foo" }, { :segment => { :id => 7} })
     end
   end
 end
