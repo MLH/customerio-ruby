@@ -2,9 +2,15 @@ require 'net/http'
 require 'multi_json'
 
 module Customerio
-  TRACK_ROOT = 'https://track.customer.io/api/v1'
-  API_ROOT = 'https://api.customer.io/v1/api'
+  DEFAULT_TRACK_URI = 'https://track.customer.io'
+  DEFAULT_API_URI = 'https://api.customer.io'
   DEFAULT_TIMEOUT  = 10
+  BROADCASTS_ALLOWED_RECIPIENT_FIELDS = {
+    :ids => [:ids, :id_ignore_missing],
+    :emails => [:emails, :email_ignore_missing, :email_add_duplicates],
+    :per_user_data => [:per_user_data],
+    :data_file_url => [:data_file_url],
+  }
 
   class Client
     class MissingIdAttributeError < RuntimeError; end
@@ -23,6 +29,8 @@ module Customerio
       @username = site_id
       @password = secret_key
       @json = options.has_key?(:json) ? options[:json] : true
+      @base_uri = options[:base_uri] || DEFAULT_TRACK_URI
+      @api_uri = options[:api_uri] || DEFAULT_API_URI
       @timeout = options[:timeout] || DEFAULT_TIMEOUT
     end
 
@@ -112,36 +120,39 @@ module Customerio
 
     def trigger_broadcast(campaign_id, data={}, recipients={})
       raise ParamError.new("campaign_id must be an integer") unless campaign_id.is_a? Integer
-
-      if data.nil?
-        data = {}
-      end
-
       raise ParamError.new("data parameter must be a hash") unless data.is_a?(Hash)
 
-      verify_response(request(:post, trigger_path(campaign_id), data))
+      custom_recipient_field = BROADCASTS_ALLOWED_RECIPIENT_FIELDS.keys.find { |field| recipients.key?(field) }
+
+      payload = if (custom_recipient_field)
+        { :data => data }.merge(filter_recipients_data_for_field(recipients, custom_recipient_field))
+      else
+        { :data => data, :recipients => recipients }
+      end
+
+      verify_response(request(:post, trigger_path(campaign_id), payload))
     end
 
     private
 
     def add_to_segment_path(segment_id)
-      "#{TRACK_ROOT}/segments/#{segment_id}/add_customers"
+      "#{@base_uri}/api/v1/segments/#{segment_id}/add_customers"
     end
 
     def remove_from_segment_path(segment_id)
-      "#{TRACK_ROOT}/segments/#{segment_id}/remove_customers"
+      "#{@base_uri}/api/v1/segments/#{segment_id}/remove_customers"
     end
 
     def device_path(customer_id)
-      "#{TRACK_ROOT}/customers/#{customer_id}/devices"
+      "#{@base_uri}/api/v1/customers/#{customer_id}/devices"
     end
 
     def device_id_path(customer_id, device_id)
-      "#{TRACK_ROOT}/customers/#{customer_id}/devices/#{device_id}"
+      "#{@base_uri}/api/v1/customers/#{customer_id}/devices/#{device_id}"
     end
 
     def trigger_path(campaign_id)
-      "#{API_ROOT}/campaigns/#{campaign_id}/triggers"
+      "#{@api_uri}/v1/api/campaigns/#{campaign_id}/triggers"
     end
 
     def create_or_update(attributes = {})
@@ -159,7 +170,7 @@ module Customerio
     end
 
     def create_anonymous_event(event_name, attributes = {})
-      create_event("#{TRACK_ROOT}/events", event_name, attributes)
+      create_event("#{@base_uri}/api/v1/events", event_name, attributes)
     end
 
     def create_event(url, event_name, attributes = {})
@@ -169,15 +180,15 @@ module Customerio
     end
 
     def customer_path(id)
-      "#{TRACK_ROOT}/customers/#{id}"
+      "#{@base_uri}/api/v1/customers/#{id}"
     end
 
     def suppress_path(customer_id)
-      "#{TRACK_ROOT}/customers/#{customer_id}/suppress"
+      "#{@base_uri}/api/v1/customers/#{customer_id}/suppress"
     end
 
     def unsuppress_path(customer_id)
-      "#{TRACK_ROOT}/customers/#{customer_id}/unsuppress"
+      "#{@base_uri}/api/v1/customers/#{customer_id}/unsuppress"
     end
 
     def valid_timestamp?(timestamp)
@@ -196,6 +207,13 @@ module Customerio
     def extract_attributes(args)
       hash = args.last.is_a?(Hash) ? args.pop : {}
       hash.inject({}){ |hash, (k,v)| hash[k.to_sym] = v; hash }
+    end
+
+    def filter_recipients_data_for_field(recipients, field)
+      BROADCASTS_ALLOWED_RECIPIENT_FIELDS[field].reduce({}) do |obj, f|
+        obj[f] = recipients[f]
+        obj
+      end
     end
 
     def request(method, path, body = nil, headers = {})

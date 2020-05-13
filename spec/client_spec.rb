@@ -7,8 +7,12 @@ describe Customerio::Client do
   let(:client)   { Customerio::Client.new("SITE_ID", "API_KEY", :json => false) }
   let(:response) { double("Response", :code => 200) }
 
-  def api_uri(path)
+  def track_uri(path)
     "https://track.customer.io#{path}"
+  end
+
+  def api_uri(path)
+    "https://api.customer.io#{path}"
   end
 
   def json(data)
@@ -21,7 +25,7 @@ describe Customerio::Client do
     it "uses json by default" do
       client = Customerio::Client.new("SITE_ID", "API_KEY")
 
-      stub_request(:put, api_uri('/api/v1/customers/5')).
+      stub_request(:put, track_uri('/api/v1/customers/5')).
         with(:body => json(body),
              :headers => {'Content-Type'=>'application/json'}).
         to_return(:status => 200, :body => "", :headers => {})
@@ -32,7 +36,7 @@ describe Customerio::Client do
     it "allows disabling json" do
       client = Customerio::Client.new("SITE_ID", "API_KEY", :json => false)
 
-      stub_request(:put, api_uri('/api/v1/customers/5')).
+      stub_request(:put, track_uri('/api/v1/customers/5')).
         with(:body => { :id => "5", :name => "Bob" }).
         to_return(:status => 200, :body => "", :headers => {})
 
@@ -42,7 +46,7 @@ describe Customerio::Client do
 
   describe "#identify" do
     it "sends a PUT request to customer.io's customer API" do
-      stub_request(:put, api_uri('/api/v1/customers/5')).
+      stub_request(:put, track_uri('/api/v1/customers/5')).
          with(:body => "id=5").
          to_return(:status => 200, :body => "hello", :headers => {})
 
@@ -53,7 +57,7 @@ describe Customerio::Client do
       client = Customerio::Client.new("SITE_ID", "API_KEY", :json => true)
       body = { :id => 5, :name => "Bob" }
 
-      stub_request(:put, api_uri('/api/v1/customers/5')).
+      stub_request(:put, track_uri('/api/v1/customers/5')).
         with(:body => json(body),
              :headers => {'Content-Type'=>'application/json'}).
         to_return(:status => 200, :body => "", :headers => {})
@@ -62,7 +66,7 @@ describe Customerio::Client do
     end
 
     it "raises an error if PUT doesn't return a 2xx response code" do
-      stub_request(:put, api_uri('/api/v1/customers/5')).
+      stub_request(:put, track_uri('/api/v1/customers/5')).
         with(:body => "id=5").
         to_return(:status => 500, :body => "", :headers => {})
 
@@ -70,7 +74,7 @@ describe Customerio::Client do
     end
 
     it "includes the HTTP response with raised errors" do
-      stub_request(:put, api_uri('/api/v1/customers/5')).
+      stub_request(:put, track_uri('/api/v1/customers/5')).
         with(:body => "id=5").
         to_return(:status => 500, :body => "whatever", :headers => {})
 
@@ -84,7 +88,7 @@ describe Customerio::Client do
     it "sends along all attributes" do
       time = Time.now.to_i
 
-      stub_request(:put, api_uri('/api/v1/customers/5')).with(
+      stub_request(:put, track_uri('/api/v1/customers/5')).with(
         :body => {
           :id => "5",
           :email => "customer@example.com",
@@ -107,7 +111,7 @@ describe Customerio::Client do
     end
 
     it 'should not raise errors when attribute keys are strings' do
-      stub_request(:put, api_uri('/api/v1/customers/5')).
+      stub_request(:put, track_uri('/api/v1/customers/5')).
         with(:body => "id=5").
         to_return(:status => 200, :body => "", :headers => {})
 
@@ -119,7 +123,7 @@ describe Customerio::Client do
 
   describe "#delete" do
     it "sends a DELETE request to the customer.io's event API" do
-      stub_request(:delete, api_uri('/api/v1/customers/5')).
+      stub_request(:delete, track_uri('/api/v1/customers/5')).
         to_return(:status => 200, :body => "", :headers => {})
 
       client.delete(5)
@@ -128,7 +132,7 @@ describe Customerio::Client do
 
   describe "#suppress" do
     it "sends a POST request to the customer.io's suppress API" do
-      stub_request(:post, api_uri('/api/v1/customers/5/suppress')).
+      stub_request(:post, track_uri('/api/v1/customers/5/suppress')).
         to_return(:status => 200, :body => "", :headers => {})
 
       client.suppress(5)
@@ -137,7 +141,7 @@ describe Customerio::Client do
 
   describe "#unsuppress" do
     it "sends a POST request to the customer.io's unsuppress API" do
-      stub_request(:post, api_uri('/api/v1/customers/5/unsuppress')).
+      stub_request(:post, track_uri('/api/v1/customers/5/unsuppress')).
         to_return(:status => 200, :body => "", :headers => {})
 
       client.unsuppress(5)
@@ -146,7 +150,7 @@ describe Customerio::Client do
 
   describe "#track" do
     it "raises an error if POST doesn't return a 2xx response code" do
-      stub_request(:post, api_uri('/api/v1/customers/5/events')).
+      stub_request(:post, track_uri('/api/v1/customers/5/events')).
         with(:body => "name=purchase").
         to_return(:status => 500, :body => "", :headers => {})
 
@@ -154,7 +158,7 @@ describe Customerio::Client do
     end
 
     it "uses the site_id and api key for basic auth and sends the event name" do
-      stub_request(:post, api_uri('/api/v1/customers/5/events')).
+      stub_request(:post, track_uri('/api/v1/customers/5/events')).
         with(:body => "name=purchase").
         to_return(:status => 200, :body => "", :headers => {})
 
@@ -162,7 +166,7 @@ describe Customerio::Client do
     end
 
     it "sends any optional event attributes" do
-      stub_request(:post, api_uri('/api/v1/customers/5/events')).
+      stub_request(:post, track_uri('/api/v1/customers/5/events')).
          with(:body => {
           :name => "purchase",
           :data => {
@@ -176,7 +180,7 @@ describe Customerio::Client do
     end
 
     it "copes with arrays" do
-      stub_request(:post, api_uri('/api/v1/customers/5/events')).
+      stub_request(:post, track_uri('/api/v1/customers/5/events')).
          with(:body => {
           :name => "event",
           :data => {
@@ -189,7 +193,7 @@ describe Customerio::Client do
     end
 
     it "copes with hashes" do
-      stub_request(:post, api_uri('/api/v1/customers/5/events')).
+      stub_request(:post, track_uri('/api/v1/customers/5/events')).
          with(:body => {
           :name => "event",
           :data => {
@@ -206,7 +210,7 @@ describe Customerio::Client do
       data = { :type => "socks", :price => "13.99" }
       body = { :name => "purchase", :data => data }
 
-      stub_request(:post, api_uri('/api/v1/customers/5/events')).
+      stub_request(:post, track_uri('/api/v1/customers/5/events')).
         with(:body => json(body),
              :headers => {'Content-Type'=>'application/json'}).
         to_return(:status => 200, :body => "", :headers => {})
@@ -215,7 +219,7 @@ describe Customerio::Client do
     end
 
     it "allows sending of a timestamp" do
-      stub_request(:post, api_uri('/api/v1/customers/5/events')).
+      stub_request(:post, track_uri('/api/v1/customers/5/events')).
         with(:body => {
           :name => "purchase",
           :data => {
@@ -231,7 +235,7 @@ describe Customerio::Client do
     end
 
     it "doesn't send timestamp if timestamp is in milliseconds" do
-      stub_request(:post, api_uri('/api/v1/customers/5/events')).
+      stub_request(:post, track_uri('/api/v1/customers/5/events')).
         with(:body => {
           :name => "purchase",
           :data => {
@@ -248,7 +252,7 @@ describe Customerio::Client do
     it "doesn't send timestamp if timestamp is a date" do
       date = Time.now
 
-      stub_request(:post, api_uri('/api/v1/customers/5/events')).
+      stub_request(:post, track_uri('/api/v1/customers/5/events')).
         with(:body => {
           :name => "purchase",
           :data => {
@@ -263,7 +267,7 @@ describe Customerio::Client do
     end
 
     it "doesn't send timestamp if timestamp isn't an integer" do
-      stub_request(:post, api_uri('/api/v1/customers/5/events')).
+      stub_request(:post, track_uri('/api/v1/customers/5/events')).
         with(:body => {
           :name => "purchase",
           :data => {
@@ -280,7 +284,7 @@ describe Customerio::Client do
 
     context "tracking an anonymous event" do
       it "sends a POST request to the customer.io's anonymous event API" do
-        stub_request(:post, api_uri('/api/v1/events')).
+        stub_request(:post, track_uri('/api/v1/events')).
           with(:body => "name=purchase").
           to_return(:status => 200, :body => "", :headers => {})
 
@@ -288,7 +292,7 @@ describe Customerio::Client do
       end
 
       it "sends any optional event attributes" do
-        stub_request(:post, api_uri('/api/v1/events')).
+        stub_request(:post, track_uri('/api/v1/events')).
           with(:body => {
             :name => "purchase",
             :data => {
@@ -302,7 +306,7 @@ describe Customerio::Client do
       end
 
       it "allows sending of a timestamp" do
-        stub_request(:post, api_uri('/api/v1/events')).
+        stub_request(:post, track_uri('/api/v1/events')).
           with(:body => {
             :name => "purchase",
             :data => {
@@ -321,7 +325,7 @@ describe Customerio::Client do
 
   describe "#anonymous_track" do
     it "raises an error if POST doesn't return a 2xx response code" do
-      stub_request(:post, api_uri('/api/v1/events')).
+      stub_request(:post, track_uri('/api/v1/events')).
         with(:body => "name=purchase").
         to_return(:status => 500, :body => "", :headers => {})
 
@@ -329,7 +333,7 @@ describe Customerio::Client do
     end
 
     it "uses the site_id and api key for basic auth and sends the event name" do
-      stub_request(:post, api_uri('/api/v1/events')).
+      stub_request(:post, track_uri('/api/v1/events')).
         with(:body => "name=purchase").
         to_return(:status => 200, :body => "", :headers => {})
 
@@ -337,7 +341,7 @@ describe Customerio::Client do
     end
 
     it "sends any optional event attributes" do
-      stub_request(:post, api_uri('/api/v1/events')).
+      stub_request(:post, track_uri('/api/v1/events')).
           with(:body => {
             :name => "purchase",
             :data => {
@@ -352,7 +356,7 @@ describe Customerio::Client do
     end
 
     it "allows sending of a timestamp" do
-      stub_request(:post, api_uri('/api/v1/events')).
+      stub_request(:post, track_uri('/api/v1/events')).
           with(:body => {
             :name => "purchase",
             :data => {
@@ -377,60 +381,60 @@ describe Customerio::Client do
 
   describe "#devices" do
     it "allows for the creation of a new device" do
-      stub_request(:put, api_uri('/api/v1/customers/5/devices')).
+      stub_request(:put, track_uri('/api/v1/customers/5/devices')).
         to_return(:status => 200, :body => "", :headers => {})
 
       client.add_device(5, "androidDeviceID", "ios", {:last_used=>1561235678})
       client.add_device(5, "iosDeviceID", "android")
     end
     it "requires a valid customer_id when creating" do
-      stub_request(:put, api_uri('/api/v1/customers/5/devices')).
+      stub_request(:put, track_uri('/api/v1/customers/5/devices')).
         to_return(:status => 200, :body => "", :headers => {})
 
        lambda { client.add_device("", "ios", "myDeviceID") }.should raise_error(Customerio::Client::ParamError)
        lambda { client.add_device(nil, "ios", "myDeviceID", {:last_used=>1561235678}) }.should raise_error(Customerio::Client::ParamError)
     end
     it "requires a valid token when creating" do
-      stub_request(:put, api_uri('/api/v1/customers/5/devices')).
+      stub_request(:put, track_uri('/api/v1/customers/5/devices')).
         to_return(:status => 200, :body => "", :headers => {})
 
        lambda { client.add_device(5, "", "ios") }.should raise_error(Customerio::Client::ParamError)
        lambda { client.add_device(5, nil, "ios", {:last_used=>1561235678}) }.should raise_error(Customerio::Client::ParamError)
     end
     it "requires a valid platform when creating" do
-      stub_request(:put, api_uri('/api/v1/customers/5/devices')).
+      stub_request(:put, track_uri('/api/v1/customers/5/devices')).
         to_return(:status => 200, :body => "", :headers => {})
 
        lambda { client.add_device(5, "token", "") }.should raise_error(Customerio::Client::ParamError)
        lambda { client.add_device(5, "toke", nil, {:last_used=>1561235678}) }.should raise_error(Customerio::Client::ParamError)
     end
     it "accepts a nil data param" do
-      stub_request(:put, api_uri('/api/v1/customers/5/devices')).
+      stub_request(:put, track_uri('/api/v1/customers/5/devices')).
         to_return(:status => 200, :body => "", :headers => {})
 
         client.add_device(5, "ios", "myDeviceID", nil)
     end
     it "fails on invalid data param" do
-      stub_request(:put, api_uri('/api/v1/customers/5/devices')).
+      stub_request(:put, track_uri('/api/v1/customers/5/devices')).
         to_return(:status => 200, :body => "", :headers => {})
 
        lambda { client.add_device(5, "ios", "myDeviceID", 1000) }.should raise_error(Customerio::Client::ParamError)
     end
     it "supports deletion of devices by token" do
-      stub_request(:delete, api_uri('/api/v1/customers/5/devices/myDeviceID')).
+      stub_request(:delete, track_uri('/api/v1/customers/5/devices/myDeviceID')).
         to_return(:status => 200, :body => "", :headers => {})
 
       client.delete_device(5, "myDeviceID")
     end
     it "requires a valid customer_id when deleting" do
-      stub_request(:delete, api_uri('/api/v1/customers/5/devices/myDeviceID')).
+      stub_request(:delete, track_uri('/api/v1/customers/5/devices/myDeviceID')).
         to_return(:status => 200, :body => "", :headers => {})
 
        lambda { client.delete_device("", "myDeviceID") }.should raise_error(Customerio::Client::ParamError)
        lambda { client.delete_device(nil, "myDeviceID") }.should raise_error(Customerio::Client::ParamError)
     end
     it "requires a valid device_id when deleting" do
-      stub_request(:delete, api_uri('/api/v1/customers/5/devices/myDeviceID')).
+      stub_request(:delete, track_uri('/api/v1/customers/5/devices/myDeviceID')).
         to_return(:status => 200, :body => "", :headers => {})
 
        lambda { client.delete_device(5, "") }.should raise_error(Customerio::Client::ParamError)
@@ -443,42 +447,42 @@ describe Customerio::Client do
     client = Customerio::Client.new("SITE_ID", "API_KEY", :json=>true)
 
     it "allows adding customers to a manual segment" do
-      stub_request(:post, api_uri('/api/v1/segments/1/add_customers')).to_return(:status => 200, :body => "", :headers => {})
+      stub_request(:post, track_uri('/api/v1/segments/1/add_customers')).to_return(:status => 200, :body => "", :headers => {})
 
       client.add_to_segment(1, ["customer1", "customer2", "customer3"])
     end
     it "requires a valid segment id when adding customers" do
-      stub_request(:post, api_uri('/api/v1/segments/1/add_customers')).to_return(:status => 200, :body => "", :headers => {})
+      stub_request(:post, track_uri('/api/v1/segments/1/add_customers')).to_return(:status => 200, :body => "", :headers => {})
 
       lambda { client.add_to_segment("not_valid", ["customer1", "customer2", "customer3"]).should raise_error(Customerio::Client::ParamError) }
     end
     it "requires a valid customer list when adding customers" do
-      stub_request(:post, api_uri('/api/v1/segments/1/add_customers')).to_return(:status => 200, :body => "", :headers => {})
+      stub_request(:post, track_uri('/api/v1/segments/1/add_customers')).to_return(:status => 200, :body => "", :headers => {})
 
       lambda { client.add_to_segment(1, "not_valid").should raise_error(Customerio::Client::ParamError) }
     end
     it "coerces non-string values to strings when adding customers" do
-      stub_request(:post, api_uri('/api/v1/segments/1/add_customers')).with(:body=>json({:ids=>["1", "2", "3"]})).to_return(:status => 200, :body => "", :headers => {})
+      stub_request(:post, track_uri('/api/v1/segments/1/add_customers')).with(:body=>json({:ids=>["1", "2", "3"]})).to_return(:status => 200, :body => "", :headers => {})
 
       client.add_to_segment(1, [1, 2, 3])
     end
     it "allows removing customers from a manual segment" do
-      stub_request(:post, api_uri('/api/v1/segments/1/remove_customers')).to_return(:status => 200, :body => "", :headers => {})
+      stub_request(:post, track_uri('/api/v1/segments/1/remove_customers')).to_return(:status => 200, :body => "", :headers => {})
 
       client.remove_from_segment(1, ["customer1", "customer2", "customer3"])
     end
     it "requires a valid segment id when removing customers" do
-      stub_request(:post, api_uri('/api/v1/segments/1/remove_customers')).to_return(:status => 200, :body => "", :headers => {})
+      stub_request(:post, track_uri('/api/v1/segments/1/remove_customers')).to_return(:status => 200, :body => "", :headers => {})
 
       lambda { client.remove_from_segment("not_valid", ["customer1", "customer2", "customer3"]).should raise_error(Customerio::Client::ParamError) }
     end
     it "requires a valid customer list when removing customers" do
-      stub_request(:post, api_uri('/api/v1/segments/1/remove_customers')).to_return(:status => 200, :body => "", :headers => {})
+      stub_request(:post, track_uri('/api/v1/segments/1/remove_customers')).to_return(:status => 200, :body => "", :headers => {})
 
       lambda { client.remove_from_segment(1, "not_valid").should raise_error(Customerio::Client::ParamError) }
     end
     it "coerces non-string values to strings when removing customers" do
-      stub_request(:post, api_uri('/api/v1/segments/1/remove_customers')).with(:body=>json({:ids=>["1", "2", "3"]})).to_return(:status => 200, :body => "", :headers => {})
+      stub_request(:post, track_uri('/api/v1/segments/1/remove_customers')).with(:body=>json({:ids=>["1", "2", "3"]})).to_return(:status => 200, :body => "", :headers => {})
 
       client.remove_from_segment(1, [1, 2, 3])
     end
@@ -488,8 +492,60 @@ describe Customerio::Client do
     client = Customerio::Client.new("SITE_ID", "API_KEY", :json=>true)
 
     it "sends a POST request to the customer.io's trigger API" do
+      stub_request(:post, api_uri('/v1/api/campaigns/1/triggers')).
+          with(:body => {
+            :data => { :name => "foo" },
+            :recipients => {
+              :segment => { :id => 7 }
+            },
+          }).
+        to_return(:status => 200, :body => "", :headers => {})
 
       client.trigger_broadcast(1, { :name => "foo" }, { :segment => { :id => 7} })
+    end
+
+    it "supports campaign triggers based on email fields" do
+      stub_request(:post, api_uri('/v1/api/campaigns/1/triggers')).
+          with(:body => {
+            :data => { :name => "foo" },
+            :emails => ["foo", "bar"],
+            :email_ignore_missing => true,
+            :email_add_duplicates => true,
+          }).
+        to_return(:status => 200, :body => "", :headers => {})
+
+      client.trigger_broadcast(1, { :name => "foo" }, {
+         :emails => ["foo", "bar"],
+         :email_ignore_missing => true,
+         :email_add_duplicates => true,
+      })
+    end
+
+    it "supports campaign triggers based on id fields" do
+      stub_request(:post, api_uri('/v1/api/campaigns/1/triggers')).
+          with(:body => {
+            :data => { :name => "foo" },
+            :ids => [1, 2, 3],
+            :id_ignore_missing => true,
+          }).
+        to_return(:status => 200, :body => "", :headers => {})
+
+      client.trigger_broadcast(1, { :name => "foo" }, {
+         :ids => [1, 2, 3],
+         :id_ignore_missing => true,
+      })
+    end
+
+    it "supports campaign triggers based on per user data" do
+      user_data = { :id => 1, :data => { :name => "foo" } }
+      stub_request(:post, api_uri('/v1/api/campaigns/1/triggers')).
+          with(:body => {
+            :data => { :name => "foo" },
+            :per_user_data => [user_data]
+          }).
+        to_return(:status => 200, :body => "", :headers => {})
+
+      client.trigger_broadcast(1, { :name => "foo" }, { :per_user_data => [user_data] })
     end
   end
 end
