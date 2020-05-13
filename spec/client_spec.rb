@@ -1,6 +1,5 @@
 require 'spec_helper'
 require 'multi_json'
-require 'pry'
 
 
 describe Customerio::Client do
@@ -48,7 +47,7 @@ describe Customerio::Client do
     it "sends a PUT request to customer.io's customer API" do
       stub_request(:put, track_uri('/api/v1/customers/5')).
          with(:body => "id=5").
-         to_return(:status => 200, :body => "hello", :headers => {})
+         to_return(:status => 200, :body => "", :headers => {})
 
       client.identify(:id => 5)
     end
