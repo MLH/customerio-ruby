@@ -2,8 +2,15 @@ require 'net/http'
 require 'multi_json'
 
 module Customerio
-  DEFAULT_BASE_URI = 'https://track.customer.io'
+  DEFAULT_TRACK_URI = 'https://track.customer.io'
+  DEFAULT_API_URI = 'https://api.customer.io'
   DEFAULT_TIMEOUT  = 10
+  BROADCASTS_ALLOWED_RECIPIENT_FIELDS = {
+    :ids => [:ids, :id_ignore_missing],
+    :emails => [:emails, :email_ignore_missing, :email_add_duplicates],
+    :per_user_data => [:per_user_data],
+    :data_file_url => [:data_file_url],
+  }
 
   class Client
     class MissingIdAttributeError < RuntimeError; end
@@ -22,7 +29,8 @@ module Customerio
       @username = site_id
       @password = secret_key
       @json = options.has_key?(:json) ? options[:json] : true
-      @base_uri = options[:base_uri] || DEFAULT_BASE_URI
+      @base_uri = options[:base_uri] || DEFAULT_TRACK_URI
+      @api_uri = options[:api_uri] || DEFAULT_API_URI
       @timeout = options[:timeout] || DEFAULT_TIMEOUT
     end
 
@@ -84,7 +92,7 @@ module Customerio
     def delete_device(customer_id, device_id)
       raise ParamError.new("customer_id must be a non-empty string") unless customer_id != "" and !customer_id.nil?
       raise ParamError.new("device_id must be a non-empty string") unless device_id != "" and !device_id.nil?
-      
+
       verify_response(request(:delete, device_id_path(customer_id, device_id)))
     end
 
@@ -104,28 +112,47 @@ module Customerio
       raise ParamError.new("customer_ids must be a list of values") unless customer_ids.is_a? Array
 
       customer_ids = customer_ids.map{ |id| id.to_s }
-      
+
       verify_response(request(:post, remove_from_segment_path(segment_id), {
         :ids => customer_ids,
       }))
     end
 
+    def trigger_broadcast(campaign_id, data={}, recipients={})
+      raise ParamError.new("campaign_id must be an integer") unless campaign_id.is_a? Integer
+      raise ParamError.new("data parameter must be a hash") unless data.is_a?(Hash)
+
+      custom_recipient_field = BROADCASTS_ALLOWED_RECIPIENT_FIELDS.keys.find { |field| recipients.key?(field) }
+
+      payload = if (custom_recipient_field)
+        { :data => data }.merge(filter_recipients_data_for_field(recipients, custom_recipient_field))
+      else
+        { :data => data, :recipients => recipients }
+      end
+
+      verify_response(request(:post, trigger_path(campaign_id), payload))
+    end
+
     private
 
     def add_to_segment_path(segment_id)
-      "/api/v1/segments/#{segment_id}/add_customers"
+      "#{@base_uri}/api/v1/segments/#{segment_id}/add_customers"
     end
 
     def remove_from_segment_path(segment_id)
-      "/api/v1/segments/#{segment_id}/remove_customers"
+      "#{@base_uri}/api/v1/segments/#{segment_id}/remove_customers"
     end
 
     def device_path(customer_id)
-      "/api/v1/customers/#{customer_id}/devices"
+      "#{@base_uri}/api/v1/customers/#{customer_id}/devices"
     end
 
     def device_id_path(customer_id, device_id)
-      "/api/v1/customers/#{customer_id}/devices/#{device_id}"
+      "#{@base_uri}/api/v1/customers/#{customer_id}/devices/#{device_id}"
+    end
+
+    def trigger_path(campaign_id)
+      "#{@api_uri}/v1/api/campaigns/#{campaign_id}/triggers"
     end
 
     def create_or_update(attributes = {})
@@ -143,7 +170,7 @@ module Customerio
     end
 
     def create_anonymous_event(event_name, attributes = {})
-      create_event("/api/v1/events", event_name, attributes)
+      create_event("#{@base_uri}/api/v1/events", event_name, attributes)
     end
 
     def create_event(url, event_name, attributes = {})
@@ -153,15 +180,15 @@ module Customerio
     end
 
     def customer_path(id)
-      "/api/v1/customers/#{id}"
+      "#{@base_uri}/api/v1/customers/#{id}"
     end
 
     def suppress_path(customer_id)
-      "/api/v1/customers/#{customer_id}/suppress"
+      "#{@base_uri}/api/v1/customers/#{customer_id}/suppress"
     end
 
     def unsuppress_path(customer_id)
-      "/api/v1/customers/#{customer_id}/unsuppress"
+      "#{@base_uri}/api/v1/customers/#{customer_id}/unsuppress"
     end
 
     def valid_timestamp?(timestamp)
@@ -182,8 +209,15 @@ module Customerio
       hash.inject({}){ |hash, (k,v)| hash[k.to_sym] = v; hash }
     end
 
+    def filter_recipients_data_for_field(recipients, field)
+      BROADCASTS_ALLOWED_RECIPIENT_FIELDS[field].reduce({}) do |obj, f|
+        obj[f] = recipients[f]
+        obj
+      end
+    end
+
     def request(method, path, body = nil, headers = {})
-      uri = URI.join(@base_uri, path)
+      uri = URI(path)
 
       session = Net::HTTP.new(uri.host, uri.port)
       session.use_ssl = (uri.scheme == 'https')
