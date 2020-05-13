@@ -19,8 +19,9 @@ Gem::Specification.new do |gem|
   gem.add_dependency('multi_json', "~> 1.0")
 
   gem.add_development_dependency('rake', '~> 10.5')
+  gem.add_development_dependency('pry', '0.13.1')
   gem.add_development_dependency('rspec', '3.3.0')
-  gem.add_development_dependency('webmock', '1.24.2')
+  gem.add_development_dependency('webmock', '3.8.3')
   gem.add_development_dependency('addressable', '~> 2.3.6')
   gem.add_development_dependency('json')
 end
