@@ -210,10 +210,11 @@ module Customerio
     end
 
     def filter_recipients_data_for_field(recipients, field)
-      BROADCASTS_ALLOWED_RECIPIENT_FIELDS[field].reduce({}) do |obj, f|
+      results = BROADCASTS_ALLOWED_RECIPIENT_FIELDS[field].reduce({}) do |obj, f|
         obj[f] = recipients[f]
         obj
       end
+      results.compact
     end
 
     def request(method, path, body = nil, headers = {})
