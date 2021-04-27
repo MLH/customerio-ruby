@@ -488,10 +488,10 @@ describe Customerio::Client do
   end
 
   describe "#trigger_broadcast" do
-    client = Customerio::Client.new("SITE_ID", "API_KEY", :json=>true)
+    client = Customerio::Client.new("SITE_ID", "API_KEY", :json=>true, :app_key=>"APP_KEY")
 
     it "sends a POST request to the customer.io's trigger API" do
-      stub_request(:post, api_uri('/v1/api/campaigns/1/triggers')).
+      stub_request(:post, api_uri('/v1/campaigns/1/triggers')).
           with(:body => {
             :data => { :name => "foo" },
             :recipients => {
@@ -504,7 +504,7 @@ describe Customerio::Client do
     end
 
     it "supports campaign triggers based on email fields" do
-      stub_request(:post, api_uri('/v1/api/campaigns/1/triggers')).
+      stub_request(:post, api_uri('/v1/campaigns/1/triggers')).
           with(:body => {
             :data => { :name => "foo" },
             :emails => ["foo", "bar"],
@@ -521,7 +521,7 @@ describe Customerio::Client do
     end
 
     it "supports campaign triggers based on id fields" do
-      stub_request(:post, api_uri('/v1/api/campaigns/1/triggers')).
+      stub_request(:post, api_uri('/v1/campaigns/1/triggers')).
           with(:body => {
             :data => { :name => "foo" },
             :ids => [1, 2, 3],
@@ -537,7 +537,7 @@ describe Customerio::Client do
 
     it "supports campaign triggers based on per user data" do
       user_data = { :id => 1, :data => { :name => "foo" } }
-      stub_request(:post, api_uri('/v1/api/campaigns/1/triggers')).
+      stub_request(:post, api_uri('/v1/campaigns/1/triggers')).
           with(:body => {
             :data => { :name => "foo" },
             :per_user_data => [user_data]
