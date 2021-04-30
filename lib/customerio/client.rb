@@ -32,6 +32,7 @@ module Customerio
       @base_uri = options[:base_uri] || DEFAULT_TRACK_URI
       @api_uri = options[:api_uri] || DEFAULT_API_URI
       @timeout = options[:timeout] || DEFAULT_TIMEOUT
+      @app_key = options[:app_key]
     end
 
     def identify(attributes)
@@ -130,7 +131,17 @@ module Customerio
         { :data => data, :recipients => recipients }
       end
 
-      verify_response(request(:post, trigger_path(campaign_id), payload))
+      verify_response(
+        request(
+          :post,
+          trigger_path(campaign_id),
+          payload,
+          {
+            Authorization: "Bearer #{@app_key}"
+          },
+          false
+        )
+      )
     end
 
     private
@@ -152,7 +163,7 @@ module Customerio
     end
 
     def trigger_path(campaign_id)
-      "#{@api_uri}/v1/api/campaigns/#{campaign_id}/triggers"
+      "#{@api_uri}/v1/campaigns/#{campaign_id}/triggers"
     end
 
     def create_or_update(attributes = {})
@@ -217,7 +228,7 @@ module Customerio
       results.compact
     end
 
-    def request(method, path, body = nil, headers = {})
+    def request(method, path, body = nil, headers = {}, auth = true)
       uri = URI(path)
 
       session = Net::HTTP.new(uri.host, uri.port)
@@ -227,7 +238,7 @@ module Customerio
 
       req = request_class(method).new(uri.path)
       req.initialize_http_header(headers)
-      req.basic_auth @username, @password
+      req.basic_auth @username, @password if auth
 
       add_request_body(req, body) unless body.nil?
 
